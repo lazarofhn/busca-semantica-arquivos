@@ -1,0 +1,17 @@
+# configuração e dados pessoais — NUNCA versionar
+config.json
+dados/
+modelo_texto/
+*.db
+*.npy
+*.f16
+*.jsonl.gz
+*.log
+
+# testes locais com consultas do seu acervo
+teste_semantico.py
+
+# ambiente
+.venv/
+__pycache__/
+.claude/

@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Busca nos Arquivos</title>
+<style>
+:root{
+  --bg:#f6f5f2; --card:#ffffff; --ink:#1d1d1b; --muted:#6b6a65; --line:#e3e1db;
+  --accent:#8a5a2b; --accent-soft:#f3e9de; --mark:#ffe9a8; --chip:#efede8;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#161614; --card:#1f1f1c; --ink:#ecebe6; --muted:#9a998f; --line:#2f2e2a;
+         --accent:#d9a16a; --accent-soft:#2d241b; --mark:#5c4a12; --chip:#2a2926; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:28px 16px 60px}
+h1{font:600 20px/1.2 Georgia,"Times New Roman",serif;margin:0 0 4px;letter-spacing:.2px}
+.sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+.caixa{display:flex;gap:8px}
+#q{flex:1;font-size:17px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);outline:none}
+#q:focus{border-color:var(--accent)}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:6px 12px}
+button:hover{border-color:var(--accent)}
+#ir{background:var(--accent);color:#fff;border-color:var(--accent);padding:0 20px;font-weight:600}
+.filtros{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 6px;font-size:13px;color:var(--muted)}
+.chip{background:var(--chip);border:1px solid transparent;border-radius:999px;padding:3px 11px;font-size:13px}
+.chip.on{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+#pasta{border:1px solid var(--line);border-radius:999px;padding:4px 12px;background:var(--card);color:var(--ink);font-size:13px;width:200px}
+.info{color:var(--muted);font-size:13px;margin:14px 0 8px;min-height:18px}
+.res{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.topo{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.nome{font-weight:600;font-size:15.5px;word-break:break-word}
+.tipo{font-size:11px;text-transform:uppercase;letter-spacing:.6px;background:var(--chip);border-radius:4px;padding:1px 6px;color:var(--muted)}
+.cam{color:var(--muted);font-size:12.5px;word-break:break-word;margin:2px 0 8px}
+.trecho{font-size:13.5px;border-left:3px solid var(--accent-soft);padding:2px 0 2px 10px;margin:6px 0;white-space:pre-wrap;word-break:break-word}
+.trecho .pg{color:var(--accent);font-size:12px;font-weight:600;margin-right:6px}
+mark{background:var(--mark);color:inherit;border-radius:2px}
+.acoes{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.acoes button{font-size:13px;padding:4px 10px}
+.leitura{margin-top:10px;max-height:420px;overflow:auto;background:var(--bg);border-radius:8px;padding:10px 12px;font-size:13px;white-space:pre-wrap;display:none}
+.vazio{color:var(--muted);text-align:center;padding:40px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Busca nos Arquivos</h1>
+  <div class="sub" id="sub">busca por assunto + nome + palavra exata</div>
+  <div class="caixa">
+    <input id="q" placeholder='Descreva o que procura… (use "aspas" para termo exato)' autofocus>
+    <button id="ir">Buscar</button>
+  </div>
+  <div class="filtros">
+    <span>Buscar</span>
+    <button class="chip on" data-alvo="arquivos">Arquivos</button>
+    <button class="chip" data-alvo="pastas">Pastas</button>
+    <span style="margin-left:10px">Modo</span>
+    <button class="chip on" data-modo="hibrido">Híbrido</button>
+    <button class="chip" data-modo="semantico">Por assunto</button>
+    <button class="chip" data-modo="palavra">Palavra exata</button>
+    <span style="margin-left:10px">Tipo</span>
+    <button class="chip" data-tipo="pdf">PDF</button>
+    <button class="chip" data-tipo="docx">Word</button>
+    <button class="chip" data-tipo="xlsx">Excel</button>
+    <button class="chip" data-tipo="md,txt">Texto</button>
+    <input id="pasta" placeholder="Filtrar pasta/cliente…">
+  </div>
+  <div class="info" id="info"></div>
+  <div id="lista"></div>
+</div>
+<script>
+const H = {"X-Busca": "1"};
+let modo = "hibrido", tipos = new Set(), alvo = "arquivos";
+const $ = s => document.querySelector(s);
+const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const semAcento = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+function realcar(texto, q){
+  const termos = [...new Set(semAcento(q).match(/\w{3,}/g) || [])];
+  let h = esc(texto);
+  if (!termos.length) return h;
+  const base = semAcento(h);
+  const marcas = [];
+  for (const t of termos){ let i = 0; while ((i = base.indexOf(t, i)) >= 0){ marcas.push([i, i + t.length]); i += t.length; } }
+  marcas.sort((a,b)=>a[0]-b[0]);
+  let out = "", pos = 0;
+  for (const [a,b] of marcas){ if (a < pos) continue; out += h.slice(pos,a) + "<mark>" + h.slice(a,b) + "</mark>"; pos = b; }
+  return out + h.slice(pos);
+}
+function dataFmt(ts){ return ts ? new Date(ts*1000).toLocaleDateString("pt-BR") : ""; }
+
+async function api(rota, params){
+  const r = await fetch(rota + "?" + new URLSearchParams(params), {headers: H});
+  return r.json();
+}
+
+async function buscar(){
+  const q = $("#q").value.trim();
+  if (!q) return;
+  $("#info").textContent = "Buscando… (a primeira busca carrega o modelo, ~20 s)";
+  $("#lista").innerHTML = "";
+  if (alvo === "pastas") return buscarPastas(q);
+  const p = {q, k: 20, modo};
+  if (tipos.size) p.tipo = [...tipos].join(",");
+  if ($("#pasta").value.trim()) p.pasta = $("#pasta").value.trim();
+  const r = await api("/api/buscar", p);
+  if (r.erro){ $("#info").textContent = "Erro: " + r.erro; return; }
+  $("#info").textContent = `${r.resultados.length} arquivos · ${(r.ms/1000).toFixed(1)} s`;
+  if (!r.resultados.length){ $("#lista").innerHTML = '<div class="vazio">Nada encontrado.</div>'; return; }
+  $("#lista").innerHTML = r.resultados.map((g, i) => {
+    const partes = g.arq.split("\\"); const nome = partes.pop();
+    const trechos = !g.trechos.length ? '<div class="trecho" style="color:var(--muted)">achado pelo nome · sem texto indexado (escaneado ou tipo sem leitura)</div>' : g.trechos.map(t => `<div class="trecho">${g.ext===".pdf" ? `<span class="pg">p. ${t.pi}${t.pf!==t.pi?"–"+t.pf:""}</span>` : ""}${realcar(t.text.slice(0, 420), q)}${t.text.length>420?"…":""}</div>`).join("");
+    return `<div class="res" data-i="${i}">
+      <div class="topo"><span class="nome">${esc(nome)}</span><span class="tipo">${esc([g.ext].concat(g.tambem || []).map(e => e.slice(1)).join(" + "))}</span><span class="cam" style="margin:0">${dataFmt(g.mtime)}</span></div>
+      <div class="cam">${esc(partes.join(" › "))}</div>
+      ${trechos}
+      <div class="acoes">
+        <button data-a="abrir">Abrir</button><button data-a="pasta">Mostrar na pasta</button>
+        ${g.trechos.length ? `<button data-a="ler" data-pi="${g.trechos[0].pi}" data-pf="${g.trechos[0].pf}">Ler trecho</button>` : ""}
+      </div>
+      <div class="leitura"></div>
+    </div>`;
+  }).join("");
+  window._res = r.resultados;
+}
+
+async function buscarPastas(q){
+  const p = {q, k: 20};
+  if ($("#pasta").value.trim()) p.pasta = $("#pasta").value.trim();
+  const r = await api("/api/pastas", p);
+  if (r.erro){ $("#info").textContent = "Erro: " + r.erro; return; }
+  $("#info").textContent = `${r.resultados.length} pastas · ${(r.ms/1000).toFixed(1)} s`;
+  if (!r.resultados.length){ $("#lista").innerHTML = '<div class="vazio">Nenhuma pasta encontrada.</div>'; return; }
+  $("#lista").innerHTML = r.resultados.map((g, i) => {
+    const partes = g.pasta.split("\\"); const nome = partes.pop();
+    const info = `${g.n_arquivos} arquivos indexados` + (g.exemplos.length ? " · contém: " + g.exemplos.map(esc).join(", ") : (g.pelo_nome ? " · casou pelo nome" : ""));
+    return `<div class="res" data-i="${i}">
+      <div class="topo"><span class="nome">${realcar(nome, q)}</span><span class="tipo" style="color:var(--accent)">pasta</span><span class="cam" style="margin:0">${dataFmt(g.mtime)}</span></div>
+      <div class="cam">${esc(partes.join(" › ") || "(raiz)")}</div>
+      <div class="trecho">${info}</div>
+      <div class="acoes"><button data-a="abrir_pasta">Abrir pasta</button><button data-a="dentro">Buscar dentro</button></div>
+    </div>`;
+  }).join("");
+  window._pastas = r.resultados;
+}
+
+function trocarAlvo(novo){
+  alvo = novo;
+  document.querySelectorAll("[data-alvo]").forEach(x => x.classList.toggle("on", x.dataset.alvo === alvo));
+  $("#q").placeholder = alvo === "pastas" ? "Nome ou assunto da pasta…" : 'Descreva o que procura… (use "aspas" para termo exato)';
+}
+
+$("#lista").addEventListener("click", async e => {
+  const b = e.target.closest("button"); if (!b) return;
+  const card = b.closest(".res");
+  if (b.dataset.a === "abrir_pasta"){ api("/api/abrir_pasta", {pasta: window._pastas[+card.dataset.i].pasta}); return; }
+  if (b.dataset.a === "dentro"){ $("#pasta").value = window._pastas[+card.dataset.i].pasta; trocarAlvo("arquivos"); buscar(); return; }
+  const g = window._res[+card.dataset.i];
+  if (b.dataset.a === "abrir") api("/api/abrir", {arq: g.arq});
+  if (b.dataset.a === "pasta") api("/api/pasta", {arq: g.arq});
+  if (b.dataset.a === "ler"){
+    const box = card.querySelector(".leitura");
+    if (box.style.display === "block"){ box.style.display = "none"; return; }
+    box.style.display = "block"; box.textContent = "Lendo…";
+    const pi = Math.max(1, (+b.dataset.pi||1) - 1), pf = (+b.dataset.pf||1) + 1;
+    const r = await api("/api/ler", g.ext === ".pdf" ? {arq: g.arq, pi, pf, max: 20000} : {arq: g.arq, max: 20000});
+    box.innerHTML = r.erro ? esc(r.erro) : realcar(r.texto, $("#q").value);
+  }
+});
+document.querySelectorAll("[data-modo]").forEach(b => b.onclick = () => {
+  document.querySelectorAll("[data-modo]").forEach(x => x.classList.remove("on")); b.classList.add("on"); modo = b.dataset.modo; buscar();
+});
+document.querySelectorAll("[data-tipo]").forEach(b => b.onclick = () => {
+  b.classList.toggle("on"); b.classList.contains("on") ? tipos.add(b.dataset.tipo) : tipos.delete(b.dataset.tipo); buscar();
+});
+$("#ir").onclick = buscar;
+$("#q").addEventListener("keydown", e => { if (e.key === "Enter") buscar(); });
+$("#pasta").addEventListener("keydown", e => { if (e.key === "Enter") buscar(); });
+document.addEventListener("keydown", e => { if (e.key === "/" && document.activeElement !== $("#q") && document.activeElement !== $("#pasta")){ e.preventDefault(); $("#q").focus(); } });
+document.querySelectorAll("[data-alvo]").forEach(b => b.onclick = () => { trocarAlvo(b.dataset.alvo); buscar(); });
+if (new URLSearchParams(location.search).get("alvo") === "pastas") trocarAlvo("pastas");
+const qInicial = new URLSearchParams(location.search).get("q");
+if (qInicial){ $("#q").value = qInicial; buscar(); }
+api("/api/status", {}).then(s => { if (!s.erro) $("#sub").textContent = `${s.pasta} · ${s.arquivos.toLocaleString("pt-BR")} arquivos · ${s.trechos.toLocaleString("pt-BR")} trechos · ${s.vetores ? s.vetores.toLocaleString("pt-BR") + " com busca por assunto" : "busca por assunto ainda indexando"}`; });
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# testado com Python 3.14 no Windows 11 (deve funcionar a partir do 3.11)
+# torch: para CPU basta o pacote padrão; com GPU NVIDIA local, instale a versão CUDA (https://pytorch.org)
+sentence-transformers>=6.1.0
+transformers>=5.19.0
+torch>=2.6
+numpy>=2.0
+PyMuPDF>=1.24        # PDF
+python-docx>=1.1     # Word (.docx)
+python-calamine>=0.3 # Excel (.xlsx) — o openpyxl quebra em planilhas com certos estilos de borda
+mcp>=1.10,<2         # conector para o Claude
+Pillow>=10           # só para o modo de teste da barra (captura de tela)

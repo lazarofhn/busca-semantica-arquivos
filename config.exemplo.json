@@ -1,0 +1,9 @@
+{
+  "raiz": "C:\\Users\\SEU_USUARIO\\Documents\\Trabalho",
+  "nome": "Busca nos Arquivos",
+  "descricao_mcp": "Busca nos meus arquivos de trabalho (peças, pareceres, contratos, planilhas e processos em PDF).",
+  "porta": 8765,
+  "pastas_rebaixadas": ["_apoio", "_aux", "tmp"],
+  "pastas_ignoradas": [],
+  "orcamento_cpu_min": 150
+}
