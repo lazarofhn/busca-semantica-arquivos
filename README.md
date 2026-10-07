@@ -138,6 +138,12 @@ ligar). Opções: `-SemTarefa`, `-SemInicializar`, `-Hora 02:30`.
 
 O serviço de busca **não** fica residente: a barra, a tela e o MCP o sobem quando precisam.
 
+**Se o Alt+Espaço parar de responder**, a barra foi encerrada: procure **"Barra de busca"** no Iniciar para religá-la.
+O registro dela fica em `dados/barra.log` (início, atalho obtido e erros). Se outro programa já usar Alt+Espaço, ela
+fica com **Ctrl+Alt+Espaço** — o log diz qual. Armadilha: se você iniciar a barra **de dentro de um terminal ou de um
+agente** (Claude Code, por exemplo), ela morre quando esse programa fecha; inicie pelo atalho, pela pasta Inicializar
+ou de forma desvinculada (`Invoke-CimMethod Win32_Process -MethodName Create`).
+
 ### 4. Conectar ao Claude
 
 **Claude Code**

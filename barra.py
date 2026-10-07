@@ -283,6 +283,8 @@ class Barra:
                         self.esconder()
                 elif tipo == "atalho":
                     self.atalho = dado
+                    log(f"atalho registrado: {dado}" if dado else
+                        "ATENÇÃO: nenhum atalho disponível (Alt+Espaço e Ctrl+Alt+Espaço ocupados por outro programa)")
                     self._rodape_padrao()
                 elif tipo == "res":
                     seq, r, modo, alvo = dado
@@ -440,6 +442,20 @@ class Barra:
         self.rodape.configure(text=teclas + (f"      {extra}" if extra else ""))
 
 
+LOG = os.path.join(config.DADOS, "barra.log")
+
+
+def log(msg):
+    """Registro curto em dados/barra.log (pythonw não tem console: sem isso uma queda não deixa rastro)."""
+    try:
+        if os.path.exists(LOG) and os.path.getsize(LOG) > 512_000:
+            os.replace(LOG, LOG + ".1")
+        with open(LOG, "a", encoding="utf-8") as f:
+            f.write(f"{time.strftime('%d/%m %H:%M:%S')} [{os.getpid()}] {msg}\n")
+    except OSError:
+        pass
+
+
 def main():
     try:
         ctypes.windll.shcore.SetProcessDpiAwareness(2)
@@ -448,7 +464,16 @@ def main():
     teste = sys.argv[sys.argv.index("--teste") + 1] if "--teste" in sys.argv else None
     if not teste and not instancia_unica():
         return
+    if not teste:
+        import atexit
+        import traceback
+        log("barra iniciada")
+        atexit.register(lambda: log("barra encerrada normalmente"))
+        sys.excepthook = lambda t, v, tb: log("ERRO fatal: " + "".join(traceback.format_exception(t, v, tb))[-1500:])
     b = Barra()
+    if not teste:
+        b.root.report_callback_exception = lambda t, v, tb: log(
+            "erro na interface: " + "".join(traceback.format_exception(t, v, tb))[-1500:])
     if teste:
         b.auto_esconder = False
         if "--pastas" in sys.argv:

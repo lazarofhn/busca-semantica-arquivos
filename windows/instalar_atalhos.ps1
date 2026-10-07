@@ -1,5 +1,6 @@
 ﻿# Integra a busca ao Windows:
-#   1. atalho "Busca nos Arquivos" na Área de Trabalho e no Iniciar (tecla Ctrl+Alt+B) → tela completa no navegador
+#   1. atalho "Busca nos Arquivos" na Área de Trabalho e no Iniciar (tecla Ctrl+Alt+B) → tela completa no navegador,
+#      e "Barra de busca (Alt+Espaço)" no Iniciar, para religar a barra à mão
 #   2. barra estilo Spotlight (Alt+Espaço) iniciando junto com o Windows (pasta Inicializar)
 #   3. tarefa agendada que atualiza o índice toda madrugada (03:00; acorda o PC; roda ao ligar se perdeu o horário)
 # Uso (PowerShell, na pasta do projeto):
@@ -26,6 +27,8 @@ function Atalho($destino, $script, $tecla) {
 
 Atalho (Join-Path ([Environment]::GetFolderPath("Desktop")) "Busca nos Arquivos.lnk") "abrir_busca.py" $null
 Atalho (Join-Path ([Environment]::GetFolderPath("Programs")) "Busca nos Arquivos.lnk") "abrir_busca.py" "CTRL+ALT+B"
+# para religar a barra à mão, se um dia ela parar (procure "Barra de busca" no Iniciar)
+Atalho (Join-Path ([Environment]::GetFolderPath("Programs")) "Barra de busca (Alt+Espaço).lnk") "barra.py" $null
 if (-not $SemInicializar) {
     $ini = Join-Path ([Environment]::GetFolderPath("Startup")) "Busca nos Arquivos - barra.lnk"
     Atalho $ini "barra.py" $null
